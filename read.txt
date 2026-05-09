@@ -1,0 +1,40 @@
+#--- docs
+Tại sao nên dùng uv cho dự án AI?
+Vì bạn đang học về Agentic AI và LangChain, các thư viện này thường rất nặng và nhiều phụ thuộc. uv giúp bạn:
+Cài thư viện cực nhanh: Nhanh gấp 10-100 lần so với lệnh pip thông thường.
+Tạo môi trường ảo (venv): Chỉ mất chưa đến 1 giây.
+
+#--- get clone proj
+git clone https://github.com/emarco177/langchain-course.git
+
+
+#--- install uv
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+pip3 install uv
+
+
+#--- git sawp branch
+cd langchain-course
+git checkout --orphan project/hello-world
+
+git rm -rf .
+git status
+
+uv init
+
+
+uv add langchain
+uv add langchain-openai
+uv add python-dotenv
+uv add langchain-ollama
+uv pip install black isort
+
+#--- check install
+uv --help
+black .
+isort .
+
+#--- run
+py main.py
+
