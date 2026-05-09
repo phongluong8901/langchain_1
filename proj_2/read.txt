@@ -1,0 +1,19 @@
+
+
+#--- docs
+
+#--- install
+uv init
+
+uv add langchain langchain-google-genai python-dotenv black isort
+
+#--- run
+cd proj_2
+
+#--- git 
+git add .
+git commit -m ""
+
+git checkout -b first
+git branch
+git push -u origin first
