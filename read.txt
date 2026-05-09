@@ -4,6 +4,27 @@ Vì bạn đang học về Agentic AI và LangChain, các thư viện này thư�
 Cài thư viện cực nhanh: Nhanh gấp 10-100 lần so với lệnh pip thông thường.
 Tạo môi trường ảo (venv): Chỉ mất chưa đến 1 giây.
 
+-- file test_model.py
+-> lay cac model google ai hien tai
+
+-- tai ollama thay cho api AI
+Ai local, hoi ngu, kha nang, can gpu hoac cpu manh
+
+-- langsmith
+1. LangSmith dùng để làm gì?
+Khi bạn chạy một chuỗi (chain) phức tạp, bạn thường chỉ thấy kết quả cuối cùng. Nhưng nếu kết quả đó bị sai, bạn sẽ không biết nó sai ở bước nào: Do Prompt? Do dữ liệu đầu vào? Hay do AI suy luận kém? LangSmith giúp bạn "nhìn thấu" bên trong.
+
+Các tính năng chính:
+Tracing (Theo dõi): Ghi lại chi tiết từng bước đi của dữ liệu. Bạn có thể xem chính xác Prompt nào đã được gửi đi, tốn bao nhiêu token, và mất bao lâu để AI phản hồi.
+
+Debugging (Sửa lỗi): Khi một Agent chạy vòng lặp vô tận hoặc trả về kết quả rác, bạn có thể vào LangSmith để xem "suy nghĩ" của nó bị tắc ở đâu.
+
+Evaluation (Đánh giá): Giúp bạn kiểm tra xem nếu thay đổi Prompt hoặc Model (ví dụ từ Gemini sang Llama) thì kết quả có tốt hơn không.
+
+Monitoring (Giám sát): Theo dõi chi phí (token) và tỷ lệ lỗi khi bạn triển khai ứng dụng cho người dùng thật.
+
+
+
 #--- get clone proj
 git clone https://github.com/emarco177/langchain-course.git
 
@@ -29,6 +50,7 @@ uv add langchain-openai
 uv add python-dotenv
 uv add langchain-ollama
 uv pip install black isort
+uv pip install langchain-google-genai
 
 #--- check install
 uv --help
@@ -38,3 +60,10 @@ isort .
 #--- run
 py main.py
 
+#--- git 
+git add .
+git commit -m ""
+
+git checkout -b first
+git branch
+git push -u origin first
