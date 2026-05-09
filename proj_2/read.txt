@@ -14,6 +14,6 @@ cd proj_2
 git add .
 git commit -m ""
 
-git checkout -b first
+git checkout -b agents-under-the-hood
 git branch
-git push -u origin first
+git push -u origin agents-under-the-hood
