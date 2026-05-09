@@ -23,6 +23,18 @@ Evaluation (Đánh giá): Giúp bạn kiểm tra xem nếu thay đổi Prompt ho
 
 Monitoring (Giám sát): Theo dõi chi phí (token) và tỷ lệ lỗi khi bạn triển khai ứng dụng cho người dùng thật.
 
+--tavily
+1. Tavily là gì?
+Tavily là một công cụ tìm kiếm (Search Engine) được thiết kế dành riêng cho AI và Agent. Khác với Google Search thông thường (vốn trả về các trang web cho con người đọc), Tavily trả về dữ liệu đã được tối ưu: sạch sẽ, không có quảng cáo, và cực kỳ cô đọng để AI có thể "nuốt" được ngay.
+
+2. Tại sao không dùng Google mà phải dùng Tavily?
+Khi bạn xây dựng một Agent (ví dụ: một con bot tự nghiên cứu thị trường), việc dùng Google sẽ gặp nhiều rắc rối:
+
+Dữ liệu rác: Google trả về rất nhiều code HTML, quảng cáo, và menu trang web. AI sẽ bị "loạn" khi đọc những thứ này.
+
+Định dạng: Tavily tự động trích xuất nội dung chính từ các bài báo, chuyển nó về dạng văn bản thuần túy (Text) hoặc Markdown.
+
+Tốc độ & Hiệu quả: Tavily cho phép AI tìm kiếm nhiều nguồn cùng lúc và tổng hợp lại chỉ trong một lần gọi API.
 
 
 #--- get clone proj
@@ -51,6 +63,15 @@ uv add python-dotenv
 uv add langchain-ollama
 uv pip install black isort
 uv pip install langchain-google-genai
+uv pip install tavily-python
+
+pip install -U langchain-google-genai langchain-core langgraph python-dotenv
+pip install langchain-community
+pip install langchain-community tavily-python langchain-google-genai
+
+.\.venv\Scripts\python.exe -m pip install -U pydantic langchain-google-genai langchain-community langgraph tavily-python python-dotenv
+
+
 
 #--- check install
 uv --help
@@ -59,6 +80,8 @@ isort .
 
 #--- run
 py main.py
+
+py main_search_agent.py
 
 #--- git 
 git add .
