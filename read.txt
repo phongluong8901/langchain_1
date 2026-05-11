@@ -104,6 +104,9 @@ git checkout projects/rag-gist 598dee435cb61dbb9c655644b0e05dd4cdaf833c
 git add .
 git commit -m ""
 
+# 1. Xóa cái 'origin' cũ đang trỏ sang nhà người ta
+git remote remove origin
+# 2. Thêm lại 'origin' trỏ thẳng về repo của bạn
 git remote add origin https://github.com/phongluong8901/langchain_1.git
 
 git checkout -b rag
