@@ -1,0 +1,111 @@
+#--- docs
+https://www.pinecone.io/
+
+--
+Pinecone là một Vector Database (cơ sở dữ liệu vector) được thiết kế chuyên biệt để lưu trữ và truy vấn các dữ liệu dưới dạng vector cao chiều.
+
+Nếu bạn đang làm về AI, Chatbot hoặc RAG (Retrieval-Augmented Generation), thì Pinecone đóng vai trò như một "bộ nhớ dài hạn" cho các mô hình ngôn ngữ lớn (LLM).
+
+Dưới đây là những điểm cốt lõi bạn cần nắm:
+
+1. Tại sao cần Pinecone?
+Các cơ sở dữ liệu truyền thống (như MySQL hay MongoDB) tìm kiếm dựa trên từ khóa chính xác. Tuy nhiên, AI lại hiểu thế giới qua các con số (gọi là Vector Embeddings).
+
+Ví dụ: Nếu bạn tìm "món ăn ngon", database truyền thống có thể không tìm thấy từ "phở". Nhưng Pinecone hiểu rằng "món ăn" và "phở" có ý nghĩa gần nhau trong không gian vector và sẽ trả về kết quả đó.
+
+2. Cách thức hoạt động
+Dữ liệu (văn bản, hình ảnh): Được đi qua một mô hình Embedding (như của OpenAI hoặc Cohere) để biến thành một chuỗi số.
+
+Lưu trữ: Các chuỗi số này được đẩy vào Pinecone.
+
+Truy vấn: Khi người dùng hỏi, câu hỏi cũng được biến thành vector. Pinecone sẽ so sánh và tìm ra các vector "gần giống nhất" với câu hỏi đó (thường dùng thuật toán Cosine Similarity).
+
+3. Ưu điểm nổi bật
+Tốc độ cực nhanh: Có khả năng tìm kiếm qua hàng tỷ vector chỉ trong vài mili giây.
+
+Hoàn toàn trên Cloud (Serverless): Bạn không cần cài đặt hạ tầng phức tạp, chỉ cần tạo index và gọi API. Điều này rất tiện nếu bạn muốn tập trung vào code ứng dụng thay vì quản lý server.
+
+Khả năng mở rộng: Tự động điều chỉnh theo lượng dữ liệu bạn có.
+
+4. Ứng dụng phổ biến nhất hiện nay
+Hệ thống RAG: Cung cấp tài liệu liên quan cho ChatGPT/Claude để AI trả lời dựa trên dữ liệu riêng của bạn (không bị "ảo giác").
+
+Hệ thống gợi ý: Gợi ý sản phẩm, bài hát dựa trên sở thích người dùng.
+
+Tìm kiếm bằng hình ảnh: Tìm các ảnh có nội dung tương đồng.
+
+--
+1. Cách thức hoạt động (Workflow)
+Quy trình RAG (Retrieval-Augmented Generation) này diễn ra theo 4 bước chính:
+
+Đọc (Load): Code lấy toàn bộ nội dung từ file văn bản của bạn. Lúc này nó vẫn là một khối chữ khổng lồ.
+
+Cắt nhỏ (Split/Chunking): Đây là lúc CharacterTextSplitter l
+àm việc. Nó cắt khối chữ đó thành các đoạn nhỏ gọi là Chunks.
+
+Số hóa (Embedding): Mỗi "Chunk" sẽ được gửi đến AI của Google (Gemini). AI sẽ đọc đoạn văn đó và trả về một dãy gồm 768 con số (Vector). Dãy số này đại diện cho "tọa độ ý nghĩa" của đoạn văn đó trong không gian.
+
+Lưu trữ (Store): Cả nội dung chữ (Chunk) và dãy số (Vector) được đẩy lên Pinecone. Pinecone sẽ cất chúng vào các ngăn kệ dựa trên "tọa độ" số đó.
+
+Chunks đơn giản là những "mảnh vụn" văn bản được cắt ra từ tài liệu gốc.
+
+Tại sao không để nguyên một file lớn mà phải chia nhỏ?
+Giới hạn của AI (Context Window): Các mô hình AI như Gemini hay ChatGPT có giới hạn về số lượng từ chúng có thể đọc trong một lần. Nếu bạn đưa cả một cuốn sách vào, AI sẽ "ngộp".
+
+Tìm kiếm chính xác: Khi bạn đặt câu hỏi, hệ thống sẽ đi tìm đoạn văn liên quan nhất. Nếu bạn không chia nhỏ, nó sẽ trả về cả file dài dằng dặc, trong đó có rất nhiều thông tin rác không liên quan đến câu hỏi. Chia nhỏ giúp AI nhặt đúng "mảnh ghép" chứa câu trả lời.
+
+Tiết kiệm chi phí: Gửi một đoạn văn nhỏ để AI xử lý sẽ rẻ và nhanh hơn gửi cả một file lớn.
+
+--
+Việc lưu vào Pinecone là bước then chốt để biến một con AI "chỉ biết nói suông" thành một con AI "có kiến thức chuyên môn" từ dữ liệu của bạn.
+
+Dưới đây là lý do tại sao chúng ta phải dùng nó và tác dụng thực tế của nó trong dự án này:
+
+1. Pinecone đóng vai trò là "Bộ nhớ dài hạn"
+Các mô hình AI như Gemini hay ChatGPT bản chất chỉ có kiến thức đến thời điểm chúng được huấn luyện. Chúng không hề biết file mediumblog1.txt của bạn chứa gì.
+
+Nếu không có Pinecone: Bạn sẽ phải copy toàn bộ nội dung file vào câu hỏi mỗi lần chat. Nếu file dài 100 trang, bạn không thể làm thế vì sẽ quá giới hạn và tốn rất nhiều tiền (token).
+
+Có Pinecone: Bạn lưu sẵn dữ liệu vào đó. Khi cần, AI chỉ việc "truy xuất" đúng đoạn nó cần.
+
+2. Tác dụng "Tìm kiếm theo ý nghĩa" (Semantic Search)
+Đây là điểm khác biệt lớn nhất giữa Pinecone và các database truyền thống (như Excel hay SQL).
+
+Database thường: Tìm kiếm theo từ khóa chính xác. Nếu bạn tìm "ô tô" nhưng trong file ghi là "xe hơi", nó sẽ không tìm thấy.
+
+Pinecone: Nhờ vào các Vector (những con số mà Gemini tạo ra), Pinecone hiểu rằng "ô tô" và "xe hơi" nằm gần nhau. Khi bạn hỏi về "phương tiện giao thông", nó sẽ tự động tìm thấy đoạn văn nói về "xe hơi" để đưa cho AI.
+
+
+
+#--- install
+git clone https://github.com/emarco177/langchain-course.git
+
+uv lock
+uv sync
+pip install langchain-pinecone
+pip install -U langchain-google-genai google-genai
+
+#--- run
+cd proj_3
+cd langchain-course
+
+-- day du lieu RAG len DB PineCone
+py ingestion.py
+
+py main.py
+
+py main_2.py
+
+--
+git checkout projects/rag-gist 598dee435cb61dbb9c655644b0e05dd4cdaf833c
+
+
+#--- git 
+git add .
+git commit -m ""
+
+git remote add origin https://github.com/phongluong8901/langchain_1.git
+
+git checkout -b rag
+git branch
+git push -u origin rag
