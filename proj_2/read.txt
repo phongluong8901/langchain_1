@@ -1,14 +1,95 @@
 
 
 #--- docs
+https://smith.langchain.com/o/7850cfc2-ad69-4adf-933a-cea886fe01a6/projects/p/b6b6a4f0-9689-4207-980b-3c3163e90678?scroll_to=output
+https://app.tavily.com/home
+https://docs.ollama.com/windows
+
+--
+
+Bước 1: Gửi lệnh đi (The Call)
+Python
+ai_message = llm_with_tools.invoke(messages)
+
+Dòng này chính là lúc máy tính "nhấc máy" gọi lên server của Google. Bạn gửi đi toàn bộ mớ messages (gồm câu hỏi và những gì đã xảy ra trước đó). AI sẽ đọc hết đống này để quyết định: "Bây giờ tôi nên nói gì hay tôi nên dùng dụng cụ gì?"
+
+Bước 2: Kiểm tra ý định của AI (The Decision)
+Python
+tool_calls = ai_message.tool_calls
+if not tool_calls:
+    return ai_message.content
+
+Sau khi gọi xong, AI trả về một gói tin. Code sẽ kiểm tra:Nếu AI trả về chữ thuần túy (không đòi dùng tool): Nghĩa là nó đã xong việc $\rightarrow$ return kết thúc vòng lặp.Nếu AI trả về yêu cầu dùng tool: Nó sẽ nhảy xuống phần dưới để chạy code Python.
+
+Bước 3: Thực thi tại máy bạn (The Execution)
+Python
+observation = tool_to_use.invoke(tool_args)
+
+Đây là phần thú vị nhất. AI không thể tự truy cập database hay tự làm toán. Nó chỉ gửi cái "tên hàm" và "tham số". Đoạn code này của bạn sẽ thực thi hàm Python thật sự trên máy của bạn (ví dụ: đi lấy giá từ biến prices). Kết quả trả về được gọi là observation (vật chứng).
+
+Bước 4: Ghi nhật ký (The Memory)
+Python
+messages.append(ai_message) # Lưu lại yêu cầu của AI
+messages.append(ToolMessage(...)) # Lưu lại kết quả tool vừa chạy
+
+Bạn phải nhét 2 thứ này vào danh sách messages. Tại sao?Nếu không lưu, ở vòng lặp (Iteration) tiếp theo, AI sẽ quên mất là nó vừa gọi tool gì và kết quả ra sao. Nó sẽ bị "ngáo" và lặp đi lặp lại một câu hỏi duy nhất.Việc lưu lại giúp danh sách messages dài ra, chứa đựng toàn bộ kinh nghiệm: "Tôi đã hỏi giá $\rightarrow$ giá là 1299.99 $\rightarrow$ bây giờ tôi sẽ tính giảm giá".
+
+
+--
+2. LangChain thực hiện chiến thuật "Hỏi - Đáp xoay vòng"
+Mỗi lần vòng lặp for chạy một lượt, LangChain thực hiện một cuộc gọi API (tương tác) với AI. Bạn hãy nhìn vào sự thay đổi của "Cục dữ liệu" qua từng bước:
+
+Lần 1: LangChain gửi: [Câu hỏi của bạn] + [Danh sách Tool].
+
+AI trả lời: "Tôi cần dùng tool lấy giá".
+
+Lần 2: LangChain gửi: [Câu hỏi của bạn] + [Yêu cầu gọi tool của AI] + [Kết quả giá 1299.99 từ Python].
+
+AI trả lời: "Tôi cần dùng tool giảm giá".
+
+Lần 3: LangChain gửi: [Câu hỏi của bạn] + [Tất cả lịch sử lần 1] + [Tất cả lịch sử lần 2] + [Kết quả giảm giá 1000.99].
+
+AI trả lời: "Giá cuối là 1000.99".
+
+--
+1. Tốn tiền và Tốn tài nguyên (Token Cost)
+Vì AI (Gemini, GPT...) tính tiền dựa trên số lượng Token (chữ cái) bạn gửi lên.
+
+Lần 1: Bạn gửi 100 chữ.
+
+Lần 2: Bạn gửi (100 chữ cũ + 50 chữ AI nói + 50 chữ Tool trả về) = 200 chữ.
+
+Lần 3: Bạn gửi (200 chữ cũ + 50 chữ AI nói + 50 chữ Tool trả về) = 300 chữ.
+=> Bạn đang trả tiền lặp đi lặp lại cho những nội dung cũ ở mỗi vòng lặp. Nếu bài toán cần 20 bước, lần cuối cùng bạn sẽ gửi một "cục" dữ liệu khổng lồ.
+
+--
+Trích lọc bộ nhớ (Summarization): Sau khoảng 5-10 bước, người ta cho AI tự tóm tắt lại các bước trước đó thành một đoạn ngắn gọn rồi xóa bớt các tin nhắn chi tiết đi.
+
+Cắt tỉa lịch sử (Trimming): Chỉ giữ lại ví dụ 5 lượt hội thoại gần nhất.
+
+Dùng Database (RAG): Thay vì ném cả cục dữ liệu vào messages, người ta lưu dữ liệu vào một kho chứa riêng (Vector Database), khi nào AI cần "nhìn" cái gì thì mới bốc đúng cái đó ném vào thôi.
+
+LangGraph: Đây là một thư viện nâng cao của LangChain giúp quản lý các Agent phức tạp dưới dạng sơ đồ trạng thái (State Machine), giúp kiểm soát luồng dữ liệu chặt chẽ hơn, không để nó phình to vô tội vạ.
+
 
 #--- install
 uv init
 
 uv add langchain langchain-google-genai python-dotenv black isort
 
+pip install -U langchain-google-genai
+pip install langchain langchain-openai langchain-google-genai python-dotenv langsmith
+
+-- ollama -< len web tai ollma ve
+pip install ollama
+ollama run qwen3:1.7b 
+
 #--- run
 cd proj_2
+
+py 1_agent_loop_langchain_tool_calling.py
+
+py 2_agent_loop_raw_function_calling.py
 
 #--- git 
 git add .
