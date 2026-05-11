@@ -138,7 +138,7 @@ def run_agent(question: str):
 
         # Xử lý chuỗi tham số (ví dụ: "laptop" hoặc "1299.99, gold") thành danh sách Python
         raw_args = [x.strip() for x in tool_input_raw.split(",")]
-        args = [x.split("=", 1)[-1].strip().strip("'\"") for x in raw_args]
+        args = [x.split("=", 1)[-1].strip().strip("'\"")    for x in raw_args]
 
         print(f"  [Tool Executing] {tool_name}({args})...")
         if tool_name not in tools:
