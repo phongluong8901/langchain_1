@@ -1,0 +1,27 @@
+#--- docs
+--
+
+
+#--- install
+pip install poetry
+
+poetry init
+
+poetry add langchain langchain-openai langchain-tavily langgraph python-dotenv langchain-google-genai black isort
+poetry add grandalf
+
+#--- run
+poetry run python main.py
+
+#--- git 
+git add .
+git commit -m ""
+
+# 1. Xóa cái 'origin' cũ đang trỏ sang nhà người ta
+git remote remove origin
+# 2. Thêm lại 'origin' trỏ thẳng về repo của bạn
+git remote add origin https://github.com/phongluong8901/langchain_1.git
+
+git checkout -b agentic-rag
+git branch
+git push -u origin agentic-rag
