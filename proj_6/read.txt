@@ -1,0 +1,123 @@
+#--- docs
+
+--
+1. Thành phần cấu tạo (The Setup)
+Bạn có hai nhân vật chính (được định nghĩa trong chains.py):
+
+Generate Node (Thợ viết): Nhiệm vụ là viết Tweet dựa trên yêu cầu.
+
+Reflect Node (Giám khảo): Nhiệm vụ là "soi" bài viết của thợ viết và đưa ra những lời chê (critique).
+
+2. Quy trình chạy chi tiết (The Step-by-Step)
+Bước 1: Khởi động (Entry Point)
+Hệ thống bắt đầu tại node GENERATE.
+
+Bạn gửi vào một nội dung thô (ví dụ: "Viết về Tool Calling").
+
+AI viết bản thảo lần 1.
+
+Bước 2: Kiểm tra điều kiện (Conditional Edge)
+Sau khi viết xong, hệ thống không trả kết quả ngay mà đi qua hàm should_continue. Hàm này kiểm tra "cuốn sổ nhật ký" (danh sách tin nhắn):
+
+Nếu số tin nhắn ≤ 6: Đẩy sang node REFLECT.
+
+Nếu số tin nhắn > 6: Đẩy tới END (Kết thúc).
+
+Bước 3: Phê bình (REFLECT)
+Node này nhận bản thảo từ bước 1.
+
+AI đóng vai chuyên gia Marketing, chê bản thảo đó: "Cái này thiếu hashtag", "Hơi dài dòng", "Cần thêm icon".
+
+Lời chê này được lưu lại vào danh sách tin nhắn.
+
+Bước 4: Quay đầu (Loopback)
+Hệ thống tự động quay lại node GENERATE.
+
+Lần này, "Thợ viết" nhìn vào bản thảo cũ + lời chê mới nhận được.
+
+Nó tự sửa mình và viết ra bản thảo lần 2 tốt hơn.
+
+3. Sơ đồ tư duy về luồng chạy (Workflow Diagram)
+Input: User đưa nội dung.
+
+Generate: AI tạo bản nháp.
+
+Check: Đủ số lần chưa?
+
+Chưa: Sang bước Reflect.
+
+Reflect: AI chê và góp ý -> Quay lại bước Generate.
+
+Rồi: Kết thúc và trả kết quả.
+--
+Dựa vào hình ảnh từ LangSmith bạn cung cấp, đây chính là cái nhìn "nội soi" vào bên trong bộ não của Agent. Nó cho thấy chính xác quá trình lặp đi lặp lại (Iterative Workflow) để cải thiện bài viết.
+
+Dưới đây là giải thích chi tiết workflow mà Agent của bạn đã thực hiện:
+
+1. Cái nhìn tổng quan (The Big Picture)
+Workflow này được gọi là Self-Reflection Loop (Vòng lặp tự phản xạ). Thay vì trả lời ngay lập tức, Agent đi qua các bước: Viết (Generate) -> Chê (Reflect) -> Viết lại (Generate) ... cho đến khi đạt điều kiện dừng.
+
+Trong ảnh LangSmith, bạn có thể thấy cột danh sách bên trái liệt kê các bước chạy liên tiếp:
+
+generate (lần 1)
+
+should_continue (kiểm tra điều kiện)
+
+reflect (phê bình)
+
+generate (lần 2)
+
+reflect (phê bình tiếp)
+
+generate (lần 3)
+
+2. Chi tiết từng bước chạy (Timeline)
+Bước 1: Generate (Khởi đầu)
+Input: Câu hỏi gốc của bạn về Tool Calling của LangChain.
+
+Hành động: gemini-3.1-flash-lite tạo ra bản nháp đầu tiên.
+
+Thời gian: Mất khoảng 9.84s.
+
+Bước 2: Should_Continue (Người gác cổng)
+Hàm này kiểm tra số lượng tin nhắn. Vì mới chỉ có 2 tin nhắn (1 của bạn, 1 của AI), nó cho phép đi tiếp sang bước reflect.
+
+Bước 3: Reflect (Phê bình chuyên gia)
+Hành động: AI đóng vai "KOL Twitter" để soi bản nháp 1.
+
+Output: Nó sẽ đưa ra các nhận xét như: "Cần thêm hashtag", "Cần viết ngắn gọn cho mobile", "Cần thêm lời kêu gọi hành động (CTA)".
+
+Thời gian: 6.82s.
+
+Bước 4: Generate (Sửa đổi lần 1)
+Hành động: AI nhận lại bản nháp 1 + lời chê từ bước 3.
+
+Kết quả: Nó viết lại 3 phương án (Option 1, 2, 3) như bạn thấy trong phần Output của ảnh. Nó đã thêm Emoji, gạch đầu dòng và cấu trúc lại nội dung để "viral" hơn.
+
+Bước 5: Lặp lại (Iteration)
+Tiến trình này lặp lại thêm 1 lần nữa (tổng cộng 3 lần Generate) cho đến khi số lượng tin nhắn đạt giới hạn (trong code của bạn là > 6).
+
+
+#--- install
+pip install poetry
+
+poetry init
+
+poetry add langchain langchain-openai langchain-tavily langgraph python-dotenv langchain-google-genai black isort
+poetry add grandalf
+
+#--- run
+poetry run python main.py
+
+#--- git 
+git add .
+git commit -m ""
+
+# 1. Xóa cái 'origin' cũ đang trỏ sang nhà người ta
+git remote remove origin
+# 2. Thêm lại 'origin' trỏ thẳng về repo của bạn
+git remote add origin https://github.com/phongluong8901/langchain_1.git
+
+git checkout -b langgraph-reflection
+git branch
+git push -u origin langgraph-reflection
