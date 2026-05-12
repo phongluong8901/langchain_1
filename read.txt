@@ -1,0 +1,74 @@
+#--- docs
+Pipenv là một công cụ quản lý môi trường ảo (virtual environment) và gói (package) cho Python. Nó được tạo ra nhằm mục đích kết hợp những cái hay nhất của pip và virtualenv vào một công cụ duy nhất.
+
+--
+https://github.com/streamlit/streamlit
+
+#--- install
+git clone https://github.com/emarco177/documentation-helper.git -b 1-start-here
+
+pip install pipenv
+pip install langchain-chroma
+pip install langchain-tavily
+pip install -U google-generativeai
+pip install langchain-google-genai langchain-core langgraph langchain-pinecone langchain-ollama
+
+-- dung google kho qua -> dung ollma xem sao
+pip install -U langchain-ollama
+ollama pull nomic-embed-text
+
+#--- run
+cd proj_4
+cd documentation-helper
+
+py ingestion.py
+
+cd backend
+py core.py
+
+-- streamlit
+streamlit run main.py
+
+-- pipeline (craw->db) ollama local
+py ingestion_ollama_local_chromaDB.py
+
+-- check dung local DB - chromaDB
+py check_DB_local.py
+
+-- pipeline (craw->db) ollama pinecone
+py ingestion_ollama_pineCone.py
+
+#--- git 
+git add .
+git commit -m ""
+
+# 1. Xóa cái 'origin' cũ đang trỏ sang nhà người ta
+git remote remove origin
+# 2. Thêm lại 'origin' trỏ thẳng về repo của bạn
+git remote add origin https://github.com/phongluong8901/langchain_1.git
+
+git checkout -b documentation-helper
+git branch
+git push -u origin documentation-helper
+
+-- check va chuyen branch
+git checkout main
+git switch main
+
+#--- read work flow
+craw du lieu tho, code duoi da co pipeline roi, con cai nay chua pipeline
+Tavily Crawl Demo Tutorial.ipynb
+
+- dung ollama va day data da craw tu tavily DB local chromaDB
+ingestion_ollama_local_chromaDB.py
+- check xem chromaDB co data chua
+check_DB_local.py
+
+- hoac dung ollma day len cloud pinecone
+ingestion_ollama_pineCone.py
+
+- chyeck core giao tiep gemini - langchain - langsmith - pinecone
+core.py
+
+- tich hop UI streamlit
+main.py

@@ -1,141 +1,149 @@
 import asyncio
 import os
 import ssl
-from typing import Any, Dict, List
+import time
+from typing import List
 
 import certifi
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
-from langchain_classic.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
-from langchain_pinecone import PineconeVectorStore
-from langchain_tavily import TavilyCrawl, TavilyExtract, TavilyMap
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+from langchain_tavily import TavilyCrawl
 
+# Import các hàm log từ logger.py
 from logger import (Colors, log_error, log_header, log_info, log_success,
                     log_warning)
 
-load_dotenv()
+# 1. Khởi tạo môi trường
+load_dotenv() 
 
-# Configure SSL context to use certifi certificates
+# Cấu hình SSL tránh lỗi certificate
 ssl_context = ssl.create_default_context(cafile=certifi.where())
 os.environ["SSL_CERT_FILE"] = certifi.where()
 os.environ["REQUESTS_CA_BUNDLE"] = certifi.where()
 
-
-embeddings = OpenAIEmbeddings(
-    model="text-embedding-3-small",
-    show_progress_bar=False,
-    chunk_size=50,
-    retry_min_seconds=10,
+# 2. Cấu hình Embeddings & Vector Store
+embeddings = GoogleGenerativeAIEmbeddings(
+    model="gemini-embedding-2-preview",
+    output_dimensionality=512
 )
+
+# Khởi tạo database (Chroma)
 vectorstore = Chroma(persist_directory="chroma_db", embedding_function=embeddings)
-# vectorstore = PineconeVectorStore(
-#     index_name="langchain-docs-2025", embedding=embeddings
-# )
-tavily_extract = TavilyExtract()
-tavily_map = TavilyMap(max_depth=5, max_breadth=20, max_pages=1000)
+
+# Công cụ crawl
 tavily_crawl = TavilyCrawl()
 
-
-async def index_documents_async(documents: List[Document], batch_size: int = 50):
-    """Process documents in batches asynchronously."""
+async def index_documents_async(documents: List[Document], batch_size: int = 10):
+    """Xử lý nạp dữ liệu với cơ chế chống lỗi phản hồi rỗng."""
     log_header("VECTOR STORAGE PHASE")
-    log_info(
-        f"📚 VectorStore Indexing: Preparing to add {len(documents)} documents to vector store",
-        Colors.DARKCYAN,
-    )
+    log_info(f"📚 Tổng số sau khi lọc: {len(documents)} mảnh | Batch size: {batch_size}", Colors.DARKCYAN)
 
-    # Create batches
+    if not documents:
+        log_error("Không có mảnh nào hợp lệ để lưu!")
+        return
+
     batches = [
         documents[i : i + batch_size] for i in range(0, len(documents), batch_size)
     ]
 
-    log_info(
-        f"📦 VectorStore Indexing: Split into {len(batches)} batches of {batch_size} documents each"
-    )
+    successful = 0
+    for i, batch in enumerate(batches):
+        batch_num = i + 1
+        max_retries = 3
+        
+        for attempt in range(max_retries):
+            try:
+                log_info(f"🚀 Đang nạp đợt {batch_num}/{len(batches)} (Lần thử {attempt + 1})...")
+                
+                # Thực hiện nạp
+                await vectorstore.aadd_documents(batch)
+                
+                log_success(f"✅ Đợt {batch_num} thành công!")
+                successful += 1
+                
+                # Nghỉ 10s để duy trì Quota an toàn cho gói Free
+                if batch_num < len(batches):
+                    await asyncio.sleep(10) 
+                break 
 
-    # Process all batches concurrently
-    async def add_batch(batch: List[Document], batch_num: int):
-        try:
-            await vectorstore.aadd_documents(batch)
-            log_success(
-                f"VectorStore Indexing: Successfully added batch {batch_num}/{len(batches)} ({len(batch)} documents)"
-            )
-        except Exception as e:
-            log_error(f"VectorStore Indexing: Failed to add batch {batch_num} - {e}")
-            return False
-        return True
+            except Exception as e:
+                err_msg = str(e)
+                log_error(f"❌ Lỗi tại đợt {batch_num}: {err_msg}")
+                
+                # Nếu lỗi do Rate Limit (429) hoặc lỗi Index (do API trả về rỗng)
+                if "429" in err_msg or "index" in err_msg.lower():
+                    wait_time = 30 * (attempt + 1)
+                    log_warning(f"⚠️ Đang tạm nghỉ {wait_time}s để hồi phục API...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    break
 
-    # Process batches concurrently
-    tasks = [add_batch(batch, i + 1) for i, batch in enumerate(batches)]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    # Count successful batches
-    successful = sum(1 for result in results if result is True)
-
-    if successful == len(batches):
-        log_success(
-            f"VectorStore Indexing: All batches processed successfully! ({successful}/{len(batches)})"
-        )
-    else:
-        log_warning(
-            f"VectorStore Indexing: Processed {successful}/{len(batches)} batches successfully"
-        )
-
+    log_info(f"📊 Hoàn thành: {successful}/{len(batches)} đợt.")
 
 async def main():
-    """Main async function to orchestrate the entire process."""
     log_header("DOCUMENTATION INGESTION PIPELINE")
 
-    log_info(
-        "🗺️  TavilyCrawl: Starting to crawl the documentation site",
-        Colors.PURPLE,
-    )
-    # Crawl the documentation site
+    # BƯỚC 1: CRAWL DỮ LIỆU
+    log_info("🗺️ TavilyCrawl: Bắt đầu quét trang tài liệu...", Colors.PURPLE)
+    try:
+        res = tavily_crawl.invoke(
+            {
+                "url": "https://python.langchain.com/",
+                "max_depth": 2,
+                "extract_depth": "advanced",
+            }
+        )
+    except Exception as e:
+        log_error(f"Lỗi khi crawl: {e}")
+        return
 
-    res = tavily_crawl.invoke(
-        {
-            "url": "https://python.langchain.com/",
-            "max_depth": 2,
-            "extract_depth": "advanced",
-        }
-    )
-
-    # Convert Tavily crawl results to LangChain Document objects
     all_docs = []
-    for tavily_crawl_result_item in res["results"]:
-        log_info(
-            f"TavilyCrawl: Successfully crawled {tavily_crawl_result_item['url']} from documentation site"
-        )
-        all_docs.append(
-            Document(
-                page_content=tavily_crawl_result_item["raw_content"],
-                metadata={"source": tavily_crawl_result_item["url"]},
+    for item in res.get("results", []):
+        content = item.get("raw_content", "")
+        # Lọc ngay từ bước crawl: bỏ qua các trang rỗng hoặc link rác
+        if content and len(content.strip()) > 100:
+            log_info(f"🌐 Lấy dữ liệu: {item['url']}")
+            all_docs.append(
+                Document(
+                    page_content=content,
+                    metadata={"source": item["url"]},
+                )
             )
-        )
 
-    # Split documents into chunks
-    log_header("DOCUMENT CHUNKING PHASE")
-    log_info(
-        f"✂️  Text Splitter: Processing {len(all_docs)} documents with 4000 chunk size and 200 overlap",
-        Colors.YELLOW,
-    )
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=4000, chunk_overlap=200)
-    splitted_docs = text_splitter.split_documents(all_docs)
-    log_success(
-        f"Text Splitter: Created {len(splitted_docs)} chunks from {len(all_docs)} documents"
-    )
+    if not all_docs:
+        log_error("Không tìm thấy nội dung hợp lệ từ Tavily!")
+        return
 
-    # Process documents asynchronously
-    await index_documents_async(splitted_docs, batch_size=500)
+    # BƯỚC 2: CHUNKING & CLEANING (CỰC KỲ QUAN TRỌNG)
+    log_header("DOCUMENT CHUNKING & CLEANING")
+    
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=600, 
+        chunk_overlap=50,
+        separators=["\n\n", "\n", " ", ""]
+    )
+    
+    raw_splitted_docs = text_splitter.split_documents(all_docs)
+    
+    # Lọc sạch các mảnh rác trước khi đưa vào Embedding
+    splitted_docs = []
+    for doc in raw_splitted_docs:
+        clean_content = doc.page_content.strip()
+        # Loại bỏ các mảnh quá ngắn hoặc chỉ chứa ký tự đặc biệt/link rác
+        if len(clean_content) > 20 and not clean_content.startswith("${"):
+            splitted_docs.append(doc)
+            
+    log_success(f"✂️ Đã chia nhỏ và loại bỏ mảnh rác. Còn lại: {len(splitted_docs)} mảnh.")
+
+    # BƯỚC 3: LƯU VÀO DATABASE
+    await index_documents_async(splitted_docs, batch_size=10)
 
     log_header("PIPELINE COMPLETE")
-    log_success("🎉 Documentation ingestion pipeline finished successfully!")
-    log_info("📊 Summary:", Colors.BOLD)
-    log_info(f"   • Documents extracted: {len(all_docs)}")
-    log_info(f"   • Chunks created: {len(splitted_docs)}")
-
+    log_success("🎉 Hệ thống đã sẵn sàng!")
 
 if __name__ == "__main__":
+    # Lưu ý: Xóa folder chroma_db trước khi chạy lại nếu muốn sạch index
     asyncio.run(main())
