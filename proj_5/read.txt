@@ -20,6 +20,6 @@ git remote remove origin
 # 2. Thêm lại 'origin' trỏ thẳng về repo của bạn
 git remote add origin https://github.com/phongluong8901/langchain_1.git
 
-git checkout -b documentation-helper
+git checkout -b langgraph
 git branch
-git push -u origin documentation-helper
+git push -u origin langgraph
