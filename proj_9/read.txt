@@ -1,0 +1,112 @@
+Trong hệ sinh thái Agentic AI, MCP (Model Context Protocol) là một bước tiến quan trọng giúp các AI Agent không còn bị cô lập. Bạn có thể hiểu đơn giản MCP là một "cổng kết nối tiêu chuẩn" cho phép AI truy cập trực tiếp vào dữ liệu và công cụ bên ngoài một cách bảo mật và đồng nhất.
+
+Dưới đây là chi tiết về MCP Server:
+
+1. Định nghĩa MCP Server
+Model Context Protocol (MCP) là một giao thức mở (open standard) do Anthropic phát triển.
+
+MCP Server đóng vai trò là bên cung cấp tài nguyên. Nó "phơi" các dữ liệu (như file, database) hoặc các công cụ (như Google Search, chạy code Python) ra theo một định dạng mà AI Agent có thể hiểu và sử dụng được ngay lập tức.
+
+Thay vì mỗi công ty phải viết code riêng để kết nối AI với Slack, GitHub hay Postgres, họ chỉ cần dựng một MCP Server chuẩn, và bất kỳ AI Client nào (như Claude Desktop, Cursor) cũng có thể kết nối vào.
+
+2. Tại sao nó quan trọng với Agentic AI?
+Trong mô hình AI truyền thống, AI chỉ trả lời dựa trên dữ liệu nó được huấn luyện. Với Agentic AI (AI có khả năng tự thực hiện nhiệm vụ), nó cần "tay và mắt" để tương tác với thế giới thực. MCP Server chính là những "cánh tay" đó:
+
+Tính thay thế (Interchangeability): Bạn có thể đổi từ AI Model này sang Model khác mà không cần viết lại toàn bộ code kết nối dữ liệu.
+
+Bối cảnh (Context): Agent có thể tự truy vấn (query) đúng file hoặc bảng dữ liệu nó cần để hoàn thành task mà không cần con người copy-paste vào khung chat.
+
+Hệ sinh thái: Hiện đã có sẵn các MCP Server cho Google Drive, Slack, GitHub, SQLite, giúp việc dựng Agent trở nên cực kỳ nhanh chóng.
+
+3. Cách thức hoạt động
+Một hệ thống MCP thường gồm 3 thành phần chính:
+
+MCP Host: Ứng dụng mà bạn đang dùng (ví dụ: Claude Desktop, IDE Cursor).
+
+MCP Client: Thành phần nằm trong Host để thiết lập kết nối an toàn đến Server.
+
+MCP Server: Một chương trình nhỏ chạy cục bộ hoặc trên cloud, cung cấp 3 loại tài nguyên:
+
+Resources: Dữ liệu đọc (file, tài liệu).
+
+Tools: Các hàm thực thi (ví dụ: "Gửi email", "Chạy câu lệnh SQL").
+
+Prompts: Các mẫu câu lệnh có sẵn để tối ưu hóa việc gọi công cụ.
+
+4. Ví dụ thực tế
+Nếu bạn đang xây dựng một Agent để quản lý dự án:
+
+Bạn cài đặt một MCP Server cho GitHub.
+
+Khi bạn ra lệnh: "Kiểm tra các Issue mới nhất và tóm tắt lại", AI Agent sẽ thông qua MCP Server để đọc dữ liệu từ GitHub, xử lý thông tin và trả kết quả cho bạn.
+
+Nếu bạn cần lưu tóm tắt đó vào máy, Agent sẽ dùng một MCP Server Local File để ghi file trực tiếp xuống ổ cứng của bạn.
+
+-- asyncio
+1. Thực hiện đa nhiệm mà không cần đa luồng (Concurrency)
+Thông thường, Python chạy tuần tự: làm xong việc A mới đến việc B. Nếu việc A mất 10 giây để tải dữ liệu, chương trình sẽ bị "đứng hình" trong 10 giây đó.
+
+Với asyncio: Chương trình có thể tạm dừng việc A (khi đang chờ dữ liệu) để đi làm việc B, C. Khi dữ liệu của A về, nó quay lại xử lý nốt.
+
+Lợi ích: Bạn có thể xử lý hàng ngàn kết nối cùng lúc chỉ trên một luồng (single thread) duy nhất.
+
+2. Cung cấp bộ từ khóa async và await
+Thư viện này đi kèm với cú pháp đặc trưng giúp code trông sạch sẽ và dễ đọc hơn so với kiểu dùng "callback" cũ:
+
+async def: Định nghĩa một hàm là một coroutine (hàm có khả năng tạm dừng).
+
+await: Ra lệnh cho chương trình: "Hãy đợi kết quả của hàm này, trong lúc đợi thì đi làm việc khác đi".
+
+3. Quản lý Event Loop (Vòng lặp sự kiện)
+asyncio cung cấp một bộ máy vận hành gọi là Event Loop. Đây là bộ não điều phối mọi hoạt động:
+
+Nó theo dõi các tác vụ nào đang chờ, tác vụ nào đã xong.
+
+Nó quyết định khi nào thì chuyển đổi giữa các tác vụ để tối ưu hóa thời gian sống của CPU.
+
+
+#--- tat .env
+deactivate
+
+
+#--- install
+uv init
+uv add langchain-mcp-adapters langgraph python-dotenv
+uv add langchain-google-genai
+
+
+#--- run
+
+
+
+--- dunhg ollama cho no free
+ollama list
+qwen3:1.7b
+
+#--- git 
+git add .
+git commit -m ""
+
+# 1. Xóa cái 'origin' cũ đang trỏ sang nhà người ta
+git remote remove origin
+# 2. Thêm lại 'origin' trỏ thẳng về repo của bạn
+git remote add origin https://github.com/phongluong8901/langchain_1.git
+
+git checkout -b mcp-server
+git branch
+git push -u origin mcp-server
+
+#--- venv
+# 1. Tạo môi trường ảo mới tinh
+py -m venv venv
+
+# 2. Kích hoạt môi trường ảo
+.\venv\Scripts\activate
+
+# 3. Nâng cấp pip lên bản mới nhất trước khi cài
+python -m pip install --upgrade pip
+
+# 4. Cài đặt các bản mới nhất và bỏ qua các xung đột từ bên ngoài
+pip install langchain langchain-openai langchain-community langchain-chroma langgraph langchain-tavily beautifulsoup4 tiktoken python-dotenv
+
+#--- huong dan chay
