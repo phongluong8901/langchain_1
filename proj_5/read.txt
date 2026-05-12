@@ -1,4 +1,30 @@
 #--- docs
+1. Trạng thái (State) - "Cuốn sổ nhật ký"
+Mọi thứ bắt đầu với MessagesState. Đây là một danh sách chứa tất cả tin nhắn từ đầu đến cuối.
+
+Khi bạn hỏi: "Nhiệt độ Tokyo là bao nhiêu và nhân 3 nó lên", tin nhắn này được ghi vào trang đầu tiên của "nhật ký".
+2. Bước 1: Suy nghĩ (AGENT_REASON)
+Hàm run_agent_reasoning sẽ gửi toàn bộ cuốn nhật ký này cho Gemini.
+
+Gemini phân tích: "Người dùng muốn biết nhiệt độ Tokyo. Mình không biết thông tin này, nhưng mình có công cụ TavilySearch. Mình sẽ gọi nó."
+
+Hành động: AI không trả lời ngay, mà nó tạo ra một Tool Call (một yêu cầu gọi công cụ).
+3. Bước 2: Kiểm tra (should_continue)
+Đây là "người gác cổng" (Conditional Edge). Nó nhìn vào tin nhắn cuối cùng của AI:
+
+Nếu AI nói: "Tôi cần dùng công cụ X" -> Đẩy sang bước ACT.
+
+Nếu AI nói: "Nhiệt độ là 20 độ" (đã xong) -> Đẩy về END.
+. Bước 3: Hành động (ACT/tool_node)
+Hàm tool_node sẽ thực thi các yêu cầu của AI:
+
+Nó thấy yêu cầu gọi TavilySearch, nó sẽ tự động chạy trình tìm kiếm trên internet.
+
+Nó lấy được kết quả (ví dụ: 65°F).
+
+Nó ghi kết quả này vào "nhật ký" dưới dạng một Tool Message.
+5. Bước 4: Vòng lặp (The Loop)Sau khi có kết quả từ Tool, luồng quay ngược lại AGENT_REASON.Lần suy nghĩ thứ 2: Gemini đọc nhật ký và thấy: "À, nhiệt độ là 65°F rồi. Bây giờ yêu cầu tiếp theo là nhân 3. Mình có công cụ triple. Mình sẽ gọi nó."Vòng lặp lại tiếp diễn: Quay lại bước ACT để tính $65 \times 3 = 195$.
+6. Kết thúc (END)Sau khi có đủ thông tin ($65 \times 3 = 195$), luồng quay lại AGENT_REASON lần cuối.Gemini kết luận: "Tôi đã có đủ thông tin. Câu trả lời là..."Lúc này, should_continue thấy không còn yêu cầu gọi tool nào nữa. Nó dẫn luồng tới END và trả kết quả ra màn hình cho bạn.
 
 
 
@@ -8,8 +34,10 @@ pip install poetry
 poetry init
 
 poetry add langchain langchain-openai langchain-tavily langgraph python-dotenv langchain-google-genai
+poetry run python main.py
 
 #--- run
+poetry run python main.py
 
 #--- git 
 git add .
