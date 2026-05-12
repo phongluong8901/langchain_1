@@ -1,5 +1,136 @@
 #--- docs
+-- pytest
+1. Kiểm tra "Định dạng đầu ra" (Schema Validation)
+AI thường có thói quen trả lời lan man. Trong Project của bạn, bạn dùng Pydantic để ép AI trả về JSON có các trường như answer, reflection, references.
+
+Chạy Pytest để: Đảm bảo AI luôn trả về đúng các trường này. Nếu AI quên không trả về danh sách search_queries, Test sẽ báo lỗi ngay lập tức thay vì để lỗi đó làm sập toàn bộ hệ thống của bạn sau này.
+
+2. Kiểm tra "Luồng quyết định" (Logic Flow)
+Trong LangGraph, bạn có các nút điều kiện (should_continue hoặc event_loop).
+
+Chạy Pytest để: Giả lập các tình huống. Ví dụ: "Nếu AI đã tìm kiếm 3 lần, liệu nó có dừng lại (END) như mình lập trình không, hay nó cứ chạy mãi tốn tiền API?".
+
+3. Đánh giá chất lượng câu trả lời (Golden Dataset)
+AI không phải lúc nào cũng trả lời giống nhau 100%.
+
+Chạy Pytest để: So sánh kết quả của AI với một "đáp án chuẩn". Ví dụ, bạn test xem AI có liệt kê đúng startup Prophet Security khi hỏi về AI SOC không. Nếu phiên bản code mới làm AI "quên" mất startup này, bạn sẽ biết để chỉnh lại Prompt.
+
+4. Tránh "Lỗi dây chuyền" (Regression Testing)
+Khi bạn sửa một dòng trong actor_prompt_template, có thể nó sẽ làm hỏng khả năng trích dẫn nguồn (references) của Node revise.
+
+Chạy Pytest để: Đảm bảo khi bạn nâng cấp một bộ phận, các bộ phận khác vẫn hoạt động trơn tru.
+
 --
+1. Giai đoạn Thu thập & Sàng lọc (Retrieve & Grade)
+Bước 1 - RETRIEVE: Hệ thống nhận câu hỏi và tìm kiếm trong Vector Database (ChromaDB).
+
+Bước 2 - GRADE_DOCUMENTS: Đây là chốt chặn đầu tiên. Node này dùng một LLM (Grader) để soi từng văn bản lấy được:
+
+Nếu tài liệu có chứa từ khóa hoặc ý nghĩa liên quan: Giữ lại.
+
+Nếu tài liệu là "rác" (không liên quan): Loại bỏ và đánh dấu flag web_search = True.
+
+Workflow của ông là một hệ thống Adaptive RAG (RAG thích ứng). Nó không chỉ đơn thuần là "Hỏi - Tìm - Đáp" mà có khả năng tự đánh giá chất lượng dữ liệu và tự sửa lỗi (Self-Correction).
+
+Dưới đây là sơ đồ tư duy giải thích luồng đi của dữ liệu trong code của ông:
+
+1. Giai đoạn Thu thập & Sàng lọc (Retrieve & Grade)
+Bước 1 - RETRIEVE: Hệ thống nhận câu hỏi và tìm kiếm trong Vector Database (ChromaDB).
+
+Bước 2 - GRADE_DOCUMENTS: Đây là chốt chặn đầu tiên. Node này dùng một LLM (Grader) để soi từng văn bản lấy được:
+
+Nếu tài liệu có chứa từ khóa hoặc ý nghĩa liên quan: Giữ lại.
+
+Nếu tài liệu là "rác" (không liên quan): Loại bỏ và đánh dấu flag web_search = True.
+
+2. Giai đoạn Quyết định (Decide to Generate)
+Dựa vào kết quả của bước sàng lọc:
+
+Trường hợp A (Cần bổ sung): Nếu có flag web_search, hệ thống sẽ nhảy sang node WEBSEARCH để dùng Tavily tìm thêm thông tin mới từ internet.
+
+Trường hợp B (Đã đủ ý): Nếu các tài liệu đều sạch và liên quan, nó đi thẳng đến node GENERATE.
+
+3. Giai đoạn Kiểm định chất lượng (Self-Correction Loop)
+Sau khi LLM tạo ra câu trả lời (Generation), hệ thống không trả về ngay mà thực hiện 2 bước "tự soi" cực kỳ quan trọng:
+
+Kiểm tra ảo giác (Hallucination Grader):
+
+LLM đối chiếu câu trả lời với các tập sự thật (facts) trong documents.
+
+Nếu câu trả lời "chém gió" (không có trong tài liệu): Quay lại node GENERATE để bắt nó viết lại.
+
+Kiểm tra độ chuẩn xác (Answer Grader):
+
+Nếu đã vượt qua bài kiểm tra ảo giác, hệ thống check xem câu trả lời có thực sự giải quyết được câu hỏi của user không.
+
+Nếu "Useful": Kết thúc và trả kết quả (END).
+
+Nếu "Not Useful": Tức là tài liệu hiện tại không đủ để trả lời, hệ thống sẽ đẩy sang WEBSEARCH để tìm kiếm nguồn tri thức mới.
+
+--
+Bước 1: Cấu hình biến môi trường (.env)
+Vì code của ông sử dụng OpenAI, Tavily và LangChain Hub, ông cần tạo file .env ở thư mục gốc với các key sau:
+
+Đoạn mã
+
+OPENAI_API_KEY=sk-...
+TAVILY_API_KEY=tvly-...
+LANGCHAIN_API_KEY=lsv2_...
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_PROJECT=Advanced-RAG-LangGraph
+Note: Bật LANGCHAIN_TRACING_V2 để ông có thể lên trang LangSmith xem luồng chạy của Graph cực kỳ trực quan, lỗi ở node nào biết ngay node đó.
+
+Bước 2: Ingestion - Nạp kiến thức vào Vector DB
+Trước khi chạy Graph, ông phải tạo dữ liệu cho ChromaDB. Trong file ingestion.py, hãy bỏ comment đoạn code lưu trữ:
+
+Mở ingestion.py.
+
+Bỏ comment đoạn vectorstore = Chroma.from_documents(...).
+
+Chạy file này:
+
+Bash
+
+python ingestion.py
+Sau khi chạy xong, ông sẽ thấy một thư mục ./.chroma xuất hiện. Lúc này dữ liệu đã nằm trên ổ cứng, ông có thể comment đoạn tạo vectorstore lại để lần sau không bị nạp trùng dữ liệu.
+
+Bước 3: Kiểm tra các Chain đơn lẻ (Unit Test)
+Trước khi chạy cả một hệ thống phức tạp, ông nên test xem các "mắt xích" có hoạt động đúng không bằng file test ông đã viết:
+
+Bash
+
+# Chạy test cho các chain đánh giá và generation
+pytest graph/chains/tests/test_chains.py
+Bước này đảm bảo hallucination_grader hay retrieval_grader không trả về kết quả sai định dạng.
+
+Bước 4: Chạy Main Graph
+Cuối cùng, ông chạy file main.py để bắt đầu luồng LangGraph:
+
+Bash
+
+python main.py
+
+--
+Thứ tự thực thi bên trong hệ thống (Execution Flow)
+Khi ông gọi app.invoke(), đây là những gì xảy ra:
+
+Khởi tạo State: Tạo object GraphState với câu hỏi của ông.
+
+Kích hoạt Node retrieve: Truy vấn vào thư mục ./.chroma để lấy các đoạn văn bản liên quan.
+
+Kích hoạt Node grade_documents: LLM quét qua các docs. Nếu thấy doc nào "lạc đề", nó sẽ lọc ra và đánh dấu cần Search Web.
+
+Rẽ nhánh (Conditional Edge):
+
+Nếu cần search -> Chạy qua Tavily API.
+
+Nếu không -> Nhảy thẳng vào Generate.
+
+Hậu kiểm:
+
+Nếu câu trả lời có lỗi (ảo giác), nó tự động quay lại bước Generate (tối đa theo cấu hình mặc định của LangGraph hoặc đến khi đạt điều kiện).
+
+Khi mọi thứ "Useful", hệ thống END và in ra câu trả lời cuối cùng.
 
 
 #--- install
@@ -7,11 +138,33 @@ pip install poetry
 
 poetry init
 
-poetry add langchain langchain-openai langchain-tavily langgraph python-dotenv langchain-google-genai black isort
-poetry add grandalf
+poetry add beautifulsoup4 langchain langchain-openai langchain-comunity chromadb langchain-tavily langgraph python-dotenv langchain-google-genai black isort
+poetry add pytest --group dev
+pip install langchain langchain-openai langchain-community langchain-chroma langgraph langchain-tavily beautifulsoup4 tiktoken python-dotenv
+pip install -U langchain-google-genai
+
+pip install -U langchain-ollama
+ollama pull nomic-embed-text
+
+pip install pytest
+pip install langchainhub
 
 #--- run
+--chay pytest
+poetry run pytest . -s -v
+
+--
 poetry run python main.py
+
+--import data to chromadb
+py ingestion.py
+
+--check data chromadb
+py check_data_chromadb.py
+
+--- dunhg ollama cho no free
+ollama list
+qwen3:1.7b
 
 #--- git 
 git add .
@@ -25,3 +178,26 @@ git remote add origin https://github.com/phongluong8901/langchain_1.git
 git checkout -b agentic-rag
 git branch
 git push -u origin agentic-rag
+
+#--- venv
+# 1. Tạo môi trường ảo mới tinh
+py -m venv venv
+
+# 2. Kích hoạt môi trường ảo
+.\venv\Scripts\activate
+
+# 3. Nâng cấp pip lên bản mới nhất trước khi cài
+python -m pip install --upgrade pip
+
+# 4. Cài đặt các bản mới nhất và bỏ qua các xung đột từ bên ngoài
+pip install langchain langchain-openai langchain-community langchain-chroma langgraph langchain-tavily beautifulsoup4 tiktoken python-dotenv
+
+#--- huong dan chay
+- khoi tao data (craw web + luu vao chromedb)
+ingestion.py
+- check lai chromedb da co data chua
+check_data_chromadb.py
+- test cac file voi pytest
+test_chains.py
+- chay main (user -> chromadb -> ollama ->)
+main.py

@@ -116,3 +116,7 @@ venv.bak/
 
 # Windows
 Thumbs.db
+
+
+.chroma/*
+.chroma
