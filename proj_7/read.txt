@@ -1,0 +1,107 @@
+#--- docs
+--
+1. Sơ đồ luồng (Flowchart)Luồng đi của dữ liệu sẽ như sau:START $\rightarrow$ Draft $\rightarrow$ Execute Tools $\rightarrow$ Revise $\rightarrow$ (Kiểm tra điều kiện) $\rightarrow$ Lặp lại hoặc END.
+2. Các bước vận hành chi tiết
+Bước 1: Phác thảo (Draft Node)
+Nhiệm vụ: AI đóng vai một "nghiên cứu viên sơ cấp".
+
+Hành động: Khi nhận được câu hỏi về AI SOC, nó viết một bản nháp dựa trên kiến thức sẵn có của nó.
+
+Đặc điểm: Nó không chỉ viết bài mà còn tự nhận xét: "Tôi chưa biết rõ startup nào đã gọi vốn" và tạo ra các từ khóa tìm kiếm (Search Queries).
+Bước 2: Truy xuất thông tin thực tế (Execute Tools)
+Nhiệm vụ: Đây là "cánh tay" đi ra ngoài thực tế.
+
+Hành động: Hệ thống lấy các từ khóa từ Bước 1, gửi cho Tavily Search để quét Internet.
+
+Kết quả: Trả về một tập hợp các link web và nội dung thô về các startup AI SOC.
+Bước 3: Hiệu chỉnh chuyên sâu (Revise Node)
+Nhiệm vụ: Đóng vai "biên tập viên cao cấp".
+
+Hành động: AI đọc bản nháp cũ + đọc dữ liệu thực tế vừa tìm được từ Bước 2. Nó viết lại toàn bộ bài viết, chèn thêm số liệu, tên startup và các trích dẫn nguồn [1], [2].
+
+Đặc điểm: Nó sử dụng schema ReviseAnswer để đảm bảo dữ liệu trả về cực kỳ sạch và chuyên nghiệp.
+Để giải thích luồng hoạt động của hệ thống Deep Research Agent này, mình sẽ dùng hình ảnh một "Cánh tay Robot thông minh" trong nhà máy (lĩnh vực Mechatronics của bạn) để bạn dễ hình dung.Hệ thống này không chạy thẳng một lèo, mà nó có phản hồi (Feedback Loop) để tự sửa đổi dữ liệu.1. Sơ đồ luồng (Flowchart)Luồng đi của dữ liệu sẽ như sau:START $\rightarrow$ Draft $\rightarrow$ Execute Tools $\rightarrow$ Revise $\rightarrow$ (Kiểm tra điều kiện) $\rightarrow$ Lặp lại hoặc END.2. Các bước vận hành chi tiếtBước 1: Phác thảo (Draft Node)Nhiệm vụ: AI đóng vai một "nghiên cứu viên sơ cấp".Hành động: Khi nhận được câu hỏi về AI SOC, nó viết một bản nháp dựa trên kiến thức sẵn có của nó.Đặc điểm: Nó không chỉ viết bài mà còn tự nhận xét: "Tôi chưa biết rõ startup nào đã gọi vốn" và tạo ra các từ khóa tìm kiếm (Search Queries).Bước 2: Truy xuất thông tin thực tế (Execute Tools)Nhiệm vụ: Đây là "cánh tay" đi ra ngoài thực tế.Hành động: Hệ thống lấy các từ khóa từ Bước 1, gửi cho Tavily Search để quét Internet.Kết quả: Trả về một tập hợp các link web và nội dung thô về các startup AI SOC.Bước 3: Hiệu chỉnh chuyên sâu (Revise Node)Nhiệm vụ: Đóng vai "biên tập viên cao cấp".Hành động: AI đọc bản nháp cũ + đọc dữ liệu thực tế vừa tìm được từ Bước 2. Nó viết lại toàn bộ bài viết, chèn thêm số liệu, tên startup và các trích dẫn nguồn [1], [2].Đặc điểm: Nó sử dụng schema ReviseAnswer để đảm bảo dữ liệu trả về cực kỳ sạch và chuyên nghiệp.Bước 4: Vòng lặp điều kiện (Event Loop)Cơ chế: Hệ thống đếm số lần đã đi tìm kiếm (dựa vào ToolMessage).Logic:Nếu tìm kiếm chưa quá 2 lần (MAX_ITERATIONS): Nó quay lại Bước 2 để tìm thêm thông tin sâu hơn (nếu AI cảm thấy vẫn còn thiếu).Nếu đã tìm đủ 2 lần: Nó đẩy kết quả ra ngoài và kết thúc (END).
+
+--
+1. Phân tích tiến trình chạy (Traces)
+Nhìn vào danh sách bên trái trong ảnh LangSmith, bạn có thể thấy Agent đã chạy qua 3 vòng lặp chính:
+
+Lần 1 (Draft): AI viết câu trả lời dựa trên kiến thức có sẵn (Mất 42.29s).
+
+Lần 2 (Revise 1): Sau khi tìm kiếm đợt 1, AI bổ sung các startup như Prophet, Radiant, Tines.
+
+Lần 3 (Revise 2 - Final): AI đi sâu vào chi tiết tài chính (Funding), bổ sung các con số cụ thể như $41M, $15M.
+
+2. Luồng hoạt động chi tiết (The Multi-Step Loop)
+Bước 1: Khởi tạo & Phản biện (Draft & Reflection)
+Agent nhận câu hỏi và sử dụng node draft. Kết quả đầu ra không chỉ là văn bản mà là một Structured Object (đối tượng có cấu trúc) bao gồm:
+
+Answer: Câu trả lời sơ khai.
+
+Reflection: AI tự "soi" chính mình. Bạn có thể thấy trong ảnh, AI tự nhận xét là: "Thiếu chi tiết cụ thể về các vòng gọi vốn (funding rounds)".
+
+Search Queries: Từ đó, nó tự tạo ra các lệnh tìm kiếm như: "top funded AI-powered SOC startups 2026".
+
+Bước 2: Tìm kiếm thực tế (Execute Tools)
+Hệ thống kích hoạt node execute_tools. Node này lấy các search_queries ở Bước 1 và gọi Tavily Search.
+
+Trong ảnh LangSmith, bạn thấy execute_tools chạy mất 3.39s.
+
+Nó quét qua các trang như Prophet Security Blog, The SaaS News, Tracxn... để lấy dữ liệu thực tế về tiền bạc và thị trường.
+
+Bước 3: Tổng hợp & Trích dẫn (Revise Node)
+Đây là lúc Node revise hoạt động. Nó lấy dữ liệu "vừa đi chợ về" từ Internet để viết lại bài:
+
+Nâng cấp: Thay vì nói chung chung, nó bắt đầu viết: "Prophet Security raises $30M Series A led by Accel..."
+
+Citations: Ép AI phải đánh số trích dẫn [1], [2], [3]. Bạn có thể thấy phần References xuất hiện ở cuối Output trong ảnh.
+Bước 4: Vòng lặp điều phối (Event Loop)
+Sau mỗi lần revise, hàm event_loop sẽ kiểm tra: "Đã đủ dữ liệu chưa?".
+
+Nếu AI thấy vẫn cần thêm thông tin (ví dụ: muốn biết chính xác số tiền của Simbian), nó sẽ yêu cầu execute_tools một lần nữa.
+
+Khi đã đạt đến MAX_ITERATIONS (trong ảnh là sau 3 lần sửa), nó sẽ thoát ra và trả về kết quả cuối cùng.
+
+--
+3. Tại sao Workflow này lại mạnh mẽ?
+Tính chính xác cực cao: Nhìn vào ảnh Output cuối cùng, bạn thấy AI đã liệt kê được:
+
+Prophet Security: Đã gọi vốn $41M qua 3 vòng.
+
+Radiant Security: Gọi vốn $15M Series A.
+
+Không "Hallucination" (Ảo tưởng): Bằng cách bắt AI phải tự phản biện (missing / superfluous), nó nhận ra chỗ nào nó đang "chém gió" để đi tìm thông tin bù đắp vào.
+
+Sử dụng Structured Tool: Agent không trả về text suông mà trả về một Object chứa cả answer, reflection, và references. Điều này cho phép bạn dễ dàng lấy dữ liệu này để hiển thị lên UI hoặc Dashboard.
+--
+Tóm tắt thông số từ LangSmith của bạn:
+Total Tokens: Lên đến 26,214 tokens (vì mỗi vòng lặp AI lại phải đọc lại toàn bộ dữ liệu cũ + dữ liệu mới từ Internet).
+
+Total Latency: 78.56s cho toàn bộ quá trình nghiên cứu sâu.
+
+Đây chính là mô hình Agentic Workflow thực thụ: AI không chỉ là một chatbot, mà là một nhân viên nghiên cứu biết tự lập kế hoạch, tự đi tìm nguồn tin và tự biên tập lại sản phẩm của mình.
+
+
+#--- install
+pip install poetry
+
+poetry init
+
+poetry add langchain langchain-openai langchain-tavily langgraph python-dotenv langchain-google-genai black isort
+poetry add grandalf
+
+#--- run
+poetry run python main.py
+
+#--- git 
+git add .
+git commit -m ""
+
+# 1. Xóa cái 'origin' cũ đang trỏ sang nhà người ta
+git remote remove origin
+# 2. Thêm lại 'origin' trỏ thẳng về repo của bạn
+git remote add origin https://github.com/phongluong8901/langchain_1.git
+
+git checkout -b reflection-agent
+git branch
+git push -u origin reflection-agent
