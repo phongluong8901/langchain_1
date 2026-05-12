@@ -64,6 +64,32 @@ Nó theo dõi các tác vụ nào đang chờ, tác vụ nào đã xong.
 
 Nó quyết định khi nào thì chuyển đổi giữa các tác vụ để tối ưu hóa thời gian sống của CPU.
 
+--
+Bước 1: Khởi tạo "Hệ nối" (Initialization)
+Client bật Server: Khi bạn chạy langchain_client.py, nó sẽ thực hiện lệnh python servers/math_server.py. Lúc này, một "đường ống" giao tiếp (stdio) được mở ra giữa hai bên.
+
+Bắt tay (Handshake): Client gửi yêu cầu initialize. Server trả lời với danh sách các "món nghề" mình có (ví dụ: hàm add, multiply).
+
+Đăng ký Tools: Nhờ hàm load_mcp_tools, toàn bộ danh sách hàm từ Server được đăng ký vào "bộ nhớ" của Agent.
+
+Bước 2: Nhận yêu cầu và Suy luận (Planning)
+Người dùng hỏi: "What is 54 + 2 * 3?"
+
+Gửi tới LLM: Agent (LangGraph) gửi câu hỏi này kèm danh sách mô tả các Tools cho LLM (Gemini/GPT).
+
+LLM quyết định: LLM nhận ra đây là phép toán phức tạp. Nó không tự tính ngay mà gửi lại một yêu cầu: "Tôi cần gọi tool multiply với tham số {a: 2, b: 3}".
+
+Bước 3: Thực thi công cụ (Tool Execution)Client gọi Server: Agent nhận yêu cầu từ LLM, thông qua ClientSession gửi một gói tin JSON xuống math_server.py.Server tính toán: File math_server.py nhận lệnh, thực hiện phép nhân $2 \times 3 = 6$ và gửi kết quả 6 ngược lại cho Client.Cập nhật trạng thái: Agent ghi nhận kết quả 6 vào lịch sử cuộc hội thoại (messages)
+
+Bước 4: Lặp lại và Kết luận (Observation & Final Response)
+Hỏi tiếp LLM: Agent gửi lại toàn bộ lịch sử (Câu hỏi gốc + Kết quả phép nhân = 6) cho LLM.
+
+LLM suy luận tiếp: LLM thấy đã có kết quả phép nhân, giờ nó cần cộng với 54. Nó gửi yêu cầu: "Tôi cần gọi tool add với tham số {a: 54, b: 6}".
+
+Thực thi lần 2: Quy trình gọi xuống math_server.py lặp lại, Server trả về 60.
+
+Trả lời: LLM nhận kết quả 60, thấy đã xong việc và trả về câu trả lời cuối cùng cho người dùng: "Kết quả là 60".
+
 
 #--- tat .env
 deactivate
@@ -76,7 +102,7 @@ uv add langchain-google-genai
 
 
 #--- run
-
+py langchain_client.py
 
 
 --- dunhg ollama cho no free
